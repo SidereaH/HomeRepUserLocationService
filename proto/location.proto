@@ -1,20 +1,29 @@
 syntax = "proto3";
-option go_package = "proto";
+
+option go_package = "HomeRepUserLocationService/proto";
+
 package locationservice;
+
+// Сообщение для хранения геолокации
+message GeoPair {
+  double lat = 1;
+  double lng = 2;
+}
 
 // Сервис для работы с геолокацией
 service LocationService {
   // Обновление геолокации пользователя
   rpc UpdateLocation (UpdateLocationRequest) returns (UpdateLocationResponse);
-  // Получение геолокации пользователя
+  // Получение текущей геолокации пользователя
   rpc GetLocation (GetLocationRequest) returns (GetLocationResponse);
+  // Получение истории геолокаций пользователя
+  rpc GetLocationHistory (GetLocationHistoryRequest) returns (GetLocationHistoryResponse);
 }
 
 // Запрос для обновления геолокации
 message UpdateLocationRequest {
   int64 user_id = 1;
-  double lat = 2;
-  double lng = 3;
+  GeoPair location = 2;
 }
 
 // Ответ на обновление геолокации
@@ -22,13 +31,25 @@ message UpdateLocationResponse {
   bool success = 1;
 }
 
-// Запрос для получения геолокации
+// Запрос для получения текущей геолокации
 message GetLocationRequest {
   int64 user_id = 1;
 }
 
-// Ответ с геолокацией
+// Ответ с текущей геолокацией
 message GetLocationResponse {
-  double lat = 1;
-  double lng = 2;
+  GeoPair location = 1;
+}
+
+// Запрос для получения истории геолокаций
+message GetLocationHistoryRequest {
+  int64 user_id = 1;
+  string start_time = 2; // Начало периода (в формате RFC3339)
+  string end_time = 3;   // Конец периода (в формате RFC3339)
+}
+
+// Ответ с историей геолокаций
+message GetLocationHistoryResponse {
+  repeated GeoPair locations = 1;
+  repeated string timestamps = 2; // Временные метки для каждой геолокации
 }

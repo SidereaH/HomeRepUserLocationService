@@ -5,57 +5,97 @@ import (
 	"log"
 	"net"
 	"sync"
+	"time"
 
 	pb "HomeRepUserLocationService/proto"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc"
 )
 
 type locationServer struct {
 	pb.UnimplementedLocationServiceServer
-	mu            sync.Mutex
-	userLocations map[int64]*pb.GetLocationResponse // Используем GetLocationResponse вместо GeoPair
+	mu sync.Mutex
+	db *pgxpool.Pool
 }
 
+func NewLocationServer(db *pgxpool.Pool) *locationServer {
+	return &locationServer{db: db}
+}
+
+// Обновление геолокации пользователя
 func (s *locationServer) UpdateLocation(ctx context.Context, req *pb.UpdateLocationRequest) (*pb.UpdateLocationResponse, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	s.userLocations[req.UserId] = &pb.GetLocationResponse{
-		Lat: req.Lat,
-		Lng: req.Lng,
+	_, err := s.db.Exec(ctx,
+		"INSERT INTO user_locations (user_id, latitude, longitude) VALUES ($1, $2, $3)",
+		req.UserId, req.Location.Lat, req.Location.Lng,
+	)
+	if err != nil {
+		log.Printf("Failed to update location: %v", err)
+		return &pb.UpdateLocationResponse{Success: false}, err
 	}
-
 	return &pb.UpdateLocationResponse{Success: true}, nil
 }
 
+// Получение текущей геолокации пользователя
 func (s *locationServer) GetLocation(ctx context.Context, req *pb.GetLocationRequest) (*pb.GetLocationResponse, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	var lat, lng float64
+	err := s.db.QueryRow(ctx,
+		"SELECT latitude, longitude FROM user_locations WHERE user_id = $1 ORDER BY time DESC LIMIT 1",
+		req.UserId,
+	).Scan(&lat, &lng)
+	if err != nil {
+		log.Printf("Failed to get location: %v", err)
+		return nil, err
+	}
+	return &pb.GetLocationResponse{Location: &pb.GeoPair{Lat: lat, Lng: lng}}, nil
+}
 
-	location, exists := s.userLocations[req.UserId]
-	if !exists {
-		return nil, grpc.Errorf(grpc.Code(nil), "location not found")
+// Получение истории геолокаций пользователя
+func (s *locationServer) GetLocationHistory(ctx context.Context, req *pb.GetLocationHistoryRequest) (*pb.GetLocationHistoryResponse, error) {
+	rows, err := s.db.Query(ctx,
+		"SELECT latitude, longitude, time FROM user_locations WHERE user_id = $1 AND time BETWEEN $2 AND $3 ORDER BY time",
+		req.UserId, req.StartTime, req.EndTime,
+	)
+	if err != nil {
+		log.Printf("Failed to get location history: %v", err)
+		return nil, err
+	}
+	defer rows.Close()
+
+	var locations []*pb.GeoPair
+	var timestamps []string
+	for rows.Next() {
+		var lat, lng float64
+		var timestamp time.Time
+		if err := rows.Scan(&lat, &lng, &timestamp); err != nil {
+			log.Printf("Failed to scan row: %v", err)
+			continue
+		}
+		locations = append(locations, &pb.GeoPair{Lat: lat, Lng: lng})
+		timestamps = append(timestamps, timestamp.Format(time.RFC3339))
 	}
 
-	return &pb.GetLocationResponse{
-		Lat: location.Lat,
-		Lng: location.Lng,
-	}, nil
+	return &pb.GetLocationHistoryResponse{Locations: locations, Timestamps: timestamps}, nil
 }
 
 func main() {
+	// Подключение к TimescaleDB
+	db, err := pgxpool.New(context.Background(), "postgres://user:password@localhost:5432/location_service")
+	if err != nil {
+		log.Fatalf("Failed to connect to database: %v", err)
+	}
+	defer db.Close()
+
+	// Запуск gRPC-сервера
 	lis, err := net.Listen("tcp", ":50051")
 	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
+		log.Fatalf("Failed to listen: %v", err)
 	}
 
 	grpcServer := grpc.NewServer()
-	pb.RegisterLocationServiceServer(grpcServer, &locationServer{
-		userLocations: make(map[int64]*pb.GetLocationResponse),
-	})
+	pb.RegisterLocationServiceServer(grpcServer, NewLocationServer(db))
 
 	log.Println("Location Service is running on port 50051...")
 	if err := grpcServer.Serve(lis); err != nil {
-		log.Fatalf("failed to serve: %v", err)
+		log.Fatalf("Failed to serve: %v", err)
 	}
 }
