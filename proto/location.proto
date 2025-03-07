@@ -1,0 +1,34 @@
+syntax = "proto3";
+option go_package = "proto";
+package locationservice;
+
+// Сервис для работы с геолокацией
+service LocationService {
+  // Обновление геолокации пользователя
+  rpc UpdateLocation (UpdateLocationRequest) returns (UpdateLocationResponse);
+  // Получение геолокации пользователя
+  rpc GetLocation (GetLocationRequest) returns (GetLocationResponse);
+}
+
+// Запрос для обновления геолокации
+message UpdateLocationRequest {
+  int64 user_id = 1;
+  double lat = 2;
+  double lng = 3;
+}
+
+// Ответ на обновление геолокации
+message UpdateLocationResponse {
+  bool success = 1;
+}
+
+// Запрос для получения геолокации
+message GetLocationRequest {
+  int64 user_id = 1;
+}
+
+// Ответ с геолокацией
+message GetLocationResponse {
+  double lat = 1;
+  double lng = 2;
+}
