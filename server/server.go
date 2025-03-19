@@ -22,7 +22,6 @@ func NewLocationServer(db *pgxpool.Pool) *locationServer {
 	return &locationServer{db: db}
 }
 
-// Обновление геолокации пользователя
 func (s *locationServer) UpdateLocation(ctx context.Context, req *pb.UpdateLocationRequest) (*pb.UpdateLocationResponse, error) {
 	_, err := s.db.Exec(ctx,
 		"INSERT INTO user_locations (user_id, latitude, longitude) VALUES ($1, $2, $3)",
@@ -35,7 +34,6 @@ func (s *locationServer) UpdateLocation(ctx context.Context, req *pb.UpdateLocat
 	return &pb.UpdateLocationResponse{Success: true}, nil
 }
 
-// Получение текущей геолокации пользователя
 func (s *locationServer) GetLocation(ctx context.Context, req *pb.GetLocationRequest) (*pb.GetLocationResponse, error) {
 	var lat, lng float64
 	err := s.db.QueryRow(ctx,
@@ -49,7 +47,6 @@ func (s *locationServer) GetLocation(ctx context.Context, req *pb.GetLocationReq
 	return &pb.GetLocationResponse{Location: &pb.GeoPair{Lat: lat, Lng: lng}}, nil
 }
 
-// Получение истории геолокаций пользователя
 func (s *locationServer) GetLocationHistory(ctx context.Context, req *pb.GetLocationHistoryRequest) (*pb.GetLocationHistoryResponse, error) {
 	rows, err := s.db.Query(ctx,
 		"SELECT latitude, longitude, time FROM user_locations WHERE user_id = $1 AND time BETWEEN $2 AND $3 ORDER BY time",
