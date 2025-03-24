@@ -84,8 +84,7 @@ func main() {
 	dbPassword := os.Getenv("DB_PASSWORD")
 	dbName := os.Getenv("DB_NAME")
 	log.Printf("postgres://%s:%s@%s:5432/%s", dbUser, dbPassword, dbHost, dbName)
-	//connStr := fmt.Sprintf("postgres://%s:%s@%s:5432/%s", dbUser, dbPassword, dbHost, dbName)
-	connStr := fmt.Sprint("postgres://user:password@timescaledb:5432/location_service")
+	connStr := fmt.Sprintf("postgres://%s:%s@%s:5432/%s", dbUser, dbPassword, dbHost, dbName)
 	db, err := pgxpool.New(context.Background(), connStr)
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)

@@ -18,7 +18,7 @@ services:
 
   grpc-server:
     restart: unless-stopped
-    image: aliquamsiderea/userlocation_grpcserver:latest
+    image: aliquamsiderea/userlocation_grpcserver:0.0.1
     build: .
     container_name: grpc-server
     ports:
