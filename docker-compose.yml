@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  db:
+  timescaledb:
     image: timescale/timescaledb:latest-pg15
     container_name: timescaledb
     environment:
@@ -17,15 +17,17 @@ services:
       start_period: 10s
 
   grpc-server:
+    restart: unless-stopped
+    image: aliquamsiderea/userlocation_grpcserver
     build: .
     container_name: grpc-server
     ports:
       - "50051:50051"
     depends_on:
-      db:
+      timescaledb:
         condition: service_healthy
     environment:
-      DB_HOST: db
+      DB_HOST: timescaledb
       DB_PORT: 5432
       DB_USER: user
       DB_PASSWORD: password

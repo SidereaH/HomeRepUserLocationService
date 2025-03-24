@@ -1,9 +1,11 @@
-package server
+package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net"
+	"os"
 	"sync"
 	"time"
 
@@ -31,6 +33,7 @@ func (s *locationServer) UpdateLocation(ctx context.Context, req *pb.UpdateLocat
 		log.Printf("Failed to update location: %v", err)
 		return &pb.UpdateLocationResponse{Success: false}, err
 	}
+	log.Printf("success adding : %v, %v", req.Location.Lat, req.Location.Lng)
 	return &pb.UpdateLocationResponse{Success: true}, nil
 }
 
@@ -76,7 +79,14 @@ func (s *locationServer) GetLocationHistory(ctx context.Context, req *pb.GetLoca
 
 func main() {
 	// Подключение к TimescaleDB
-	db, err := pgxpool.New(context.Background(), "postgres://user:password@localhost:5432/location_service")
+	dbHost := os.Getenv("DB_HOST")
+	dbUser := os.Getenv("DB_USER")
+	dbPassword := os.Getenv("DB_PASSWORD")
+	dbName := os.Getenv("DB_NAME")
+	log.Printf("postgres://%s:%s@%s:5432/%s", dbUser, dbPassword, dbHost, dbName)
+	//connStr := fmt.Sprintf("postgres://%s:%s@%s:5432/%s", dbUser, dbPassword, dbHost, dbName)
+	connStr := fmt.Sprint("postgres://user:password@timescaledb:5432/location_service")
+	db, err := pgxpool.New(context.Background(), connStr)
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
