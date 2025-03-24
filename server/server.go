@@ -90,6 +90,19 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
+	_, err = db.Exec(context.Background(), `
+        CREATE TABLE IF NOT EXISTS user_locations (
+            user_id BIGINT NOT NULL,
+            latitude DOUBLE PRECISION NOT NULL,
+            longitude DOUBLE PRECISION NOT NULL,
+            time TIMESTAMPTZ DEFAULT NOW()
+        );
+        
+        SELECT create_hypertable('user_locations', 'time', if_not_exists => TRUE);
+    `)
+	if err != nil {
+		log.Fatalf("Failed to create table: %v", err)
+	}
 	defer db.Close()
 
 	// Запуск gRPC-сервера
