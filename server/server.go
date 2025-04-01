@@ -50,6 +50,31 @@ func (s *locationServer) GetLocation(ctx context.Context, req *pb.GetLocationReq
 	return &pb.GetLocationResponse{Location: &pb.GeoPair{Lat: lat, Lng: lng}}, nil
 }
 
+func (s *locationServer) GetUsersBetweenLongAndLat(ctx context.Context, req *pb.GetUsersBetweenLongAndLatRequest) (*pb.GetUsersBetweenLongAndLatResponse, error) {
+	rows, err := s.db.Query(ctx,
+		"SELECT user_id FROM user_locations WHERE latitude BETWEEN $1 AND $2 AND longitude BETWEEN $3 AND $4 ORDER BY time LIMIT $5",
+		req.GetLocation().GetLat()-0.05, req.GetLocation().GetLat()+0.05, req.GetLocation().GetLng()-0.05, req.GetLocation().GetLng()+0.05, req.GetMaxUsers(),
+	)
+	if err != nil {
+		log.Printf("Failed to get users in your location: %v", err)
+		return nil, err
+	}
+	defer rows.Close()
+
+	var userids []int64
+	for rows.Next() {
+		var user int64
+
+		if err := rows.Scan(&user); err != nil {
+			log.Printf("Failed to scan row: %v", err)
+			continue
+		}
+		userids = append(userids, user)
+	}
+
+	return &pb.GetUsersBetweenLongAndLatResponse{Userid: userids}, nil
+}
+
 func (s *locationServer) GetLocationHistory(ctx context.Context, req *pb.GetLocationHistoryRequest) (*pb.GetLocationHistoryResponse, error) {
 	rows, err := s.db.Query(ctx,
 		"SELECT latitude, longitude, time FROM user_locations WHERE user_id = $1 AND time BETWEEN $2 AND $3 ORDER BY time",

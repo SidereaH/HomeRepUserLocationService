@@ -20,7 +20,7 @@ services:
 
   grpc-server:
     restart: unless-stopped
-    image: aliquamsiderea/userlocation_grpcserver:0.0.1
+    image: aliquamsiderea/userlocation_grpcserver:0.0.5
     build: .
     container_name: grpc-server
     ports:
@@ -49,10 +49,10 @@ services:
       - postgres-data:/data/postgres
       - ./initdb:/docker-entrypoint-initdb.d
     networks:
-      - grpc-location  # Добавляем в эту сеть
+      - grpc-location
 
   user-service_test:
-    image: aliquamsiderea/homerep_userservice:0.1.0
+    image: aliquamsiderea/homerep_userservice:0.1.2
     container_name: userservice_container
     environment:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-test:5432/homerep_userservice
