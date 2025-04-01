@@ -8,8 +8,6 @@ services:
       POSTGRES_DB: location_service
     volumes:
       - timescaledb-data:/var/lib/postgresql/data
-
-
     ports:
       - "5432:5432"
     healthcheck:
@@ -17,6 +15,9 @@ services:
       interval: 10s
       retries: 5
       start_period: 10s
+    networks:
+      - grpc-location  # Добавляем в эту сеть
+
   grpc-server:
     restart: unless-stopped
     image: aliquamsiderea/userlocation_grpcserver:0.0.1
@@ -33,9 +34,48 @@ services:
       DB_USER: user
       DB_PASSWORD: password
       DB_NAME: location_service
+    networks:
+      - grpc-location
 
+  postgres-test:
+    image: postgres:15
+    container_name: postgres-test
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+      PGDATA: /data/postgres
+    volumes:
+      - postgres-data:/data/postgres
+      - ./initdb:/docker-entrypoint-initdb.d
+    networks:
+      - grpc-location  # Добавляем в эту сеть
+
+  user-service_test:
+    image: aliquamsiderea/homerep_userservice:0.1.0
+    container_name: userservice_container
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-test:5432/homerep_userservice
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=postgres
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=create-drop
+      - HOMEREP_SECRET=yo78$$dontCrackPleaseASdujisdufasbasu
+      - HOMEREP_LIFETIME=600000
+      - GRPC_CLIENT_LOCATION-SERVICE_ADDRESS=static://grpc-server:50051
+      - GRPC_CLIENT_LOCATION-SERVICE_NEGOTATION-TYPE=plaintext
+    ports:
+      - "8083:8083"
+    depends_on:
+      - postgres-test
+      - grpc-server  # Добавляем зависимость
+    networks:
+      - grpc-location
+    restart: unless-stopped
+
+networks:
+  grpc-location:
+    driver: bridge
 
 volumes:
   postgres-data:
   timescaledb-data:
-
