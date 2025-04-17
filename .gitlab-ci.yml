@@ -33,7 +33,7 @@ build:
     - docker build -t $CI_IMAGE_NAME .
     - docker push $CI_IMAGE_NAME
   only:
-    - master
+    - main
 #
 #deploy_docker_stage:
 #  environment:
