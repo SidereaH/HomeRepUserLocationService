@@ -1,0 +1,52 @@
+stages:
+  - test
+  - build
+  - deploy
+
+variables:
+  CI_REGISTRY: "registry.gitlab.com"
+  CI_REGISTRY_IMAGE: user_service
+  CI_IMAGE_NAME: $CI_REGISTRY_IMAGE:latest
+
+test:
+  stage: test
+  image: gradle:8.4-jdk21
+  script:
+    - gradle --no-daemon test
+  cache:
+    paths:
+      - .gradle
+  artifacts:
+    reports:
+      junit: build/test-results/test/**/*.xml
+
+build:
+  stage: build
+  image: docker:24.0
+  services:
+    - docker:24.0-dind
+  variables:
+    CI_REGISTRY_IMAGE: $CI_REGISTRY/$CI_PROJECT_PATH
+    CI_IMAGE_NAME: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG
+  script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+    - docker build -t $CI_IMAGE_NAME .
+    - docker push $CI_IMAGE_NAME
+  only:
+    - master
+#
+#deploy_docker_stage:
+#  environment:
+#    name: stage
+#    url: https://someurl
+#  image: docker:19.03.1
+#  services:
+#    - docker:19.03.1-dind
+#  stage: deploy
+#  variables:
+#    DOCKER_HOST: "tcp://${DOCKER_HOST}"
+#  before_script:
+#    - apk add jq
+#    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+#  script:
+#  - export CONFIG=$(echo $CONFIG1_STAGE | jq -c) && docker stack deploy --with-registry-auth -c ./docker/stage/app.yml app
