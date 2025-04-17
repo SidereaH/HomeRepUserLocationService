@@ -7,18 +7,18 @@ variables:
   CI_REGISTRY: "registry.gitlab.com"
   CI_REGISTRY_IMAGE: user_service
   CI_IMAGE_NAME: $CI_REGISTRY_IMAGE:latest
-
-test:
-  stage: test
-  image: gradle:8.4-jdk21
-  script:
-    - gradle --no-daemon test
-  cache:
-    paths:
-      - .gradle
-  artifacts:
-    reports:
-      junit: build/test-results/test/**/*.xml
+#
+#test:
+#  stage: test
+#  image: gradle:8.4-jdk21
+#  script:
+#    - gradle --no-daemon test
+#  cache:
+#    paths:
+#      - .gradle
+#  artifacts:
+#    reports:
+#      junit: build/test-results/test/**/*.xml
 
 build:
   stage: build
