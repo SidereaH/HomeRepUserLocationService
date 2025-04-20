@@ -1,13 +1,12 @@
 stages:
-  - test
+#  - test
   - build
   - deploy
 
 variables:
   CI_REGISTRY: "registry.gitlab.com"
-  CI_REGISTRY_IMAGE: user_service
-  CI_IMAGE_NAME: $CI_REGISTRY_IMAGE:latest
-#
+  CI_REGISTRY_IMAGE: user_location_service
+#`
 #test:
 #  stage: test
 #  image: gradle:8.4-jdk21
@@ -27,13 +26,22 @@ build:
     - docker:24.0-dind
   variables:
     CI_REGISTRY_IMAGE: $CI_REGISTRY/$CI_PROJECT_PATH
-    CI_IMAGE_NAME: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG
   script:
-    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
-    - docker build -t $CI_IMAGE_NAME .
-    - docker push $CI_IMAGE_NAME
+    - docker build -t $CI_REGISTRY_IMAGE:$IMAGE_TAG .
+    - docker push $CI_REGISTRY_IMAGE:$IMAGE_TAG
+    - echo $IMAGE_TAG > location.tag
+  artifacts:
+    paths:
+      - location.tag
   only:
     - main
+trigger_deploy:
+  stage: deploy
+  script:
+    - 'curl --request POST --form token=$DEPLOY_REPO_TRIGGER_TOKEN --form  ref=main -form "variables[LOCATION_APP_TAG]=$CI_COMMIT_SHORT_SHA" https://gitlab.com/api/v4/projects/68997048/trigger/pipeline'
+  only:
+    - main
+
 #
 #deploy_docker_stage:
 #  environment:
