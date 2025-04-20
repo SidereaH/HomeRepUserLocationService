@@ -6,6 +6,7 @@ stages:
 variables:
   CI_REGISTRY: "registry.gitlab.com"
   CI_REGISTRY_IMAGE: user_location_service
+  IMAGE_TAG: $CI_COMMIT_SHORT_SHA
 #`
 #test:
 #  stage: test
