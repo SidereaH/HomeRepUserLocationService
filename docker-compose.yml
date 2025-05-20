@@ -34,11 +34,12 @@ services:
       DB_USER: user
       DB_PASSWORD: password
       DB_NAME: location_service
-    networks:grpc:
-  client:
-    my-service:
-      address=static://localhost:9091:
-      - grpc-location
+    networks:
+      grpc:
+        client:
+          my-service:
+            address=static://localhost:9091:
+              - grpc-location
 
 #  postgres-test:
 #    image: postgres:15

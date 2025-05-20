@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"log"
 	"net"
 	"os"
@@ -52,27 +54,49 @@ func (s *locationServer) GetLocation(ctx context.Context, req *pb.GetLocationReq
 
 func (s *locationServer) GetUsersBetweenLongAndLat(ctx context.Context, req *pb.GetUsersBetweenLongAndLatRequest) (*pb.GetUsersBetweenLongAndLatResponse, error) {
 	rows, err := s.db.Query(ctx,
-		"SELECT user_id FROM user_locations WHERE latitude BETWEEN $1 AND $2 AND longitude BETWEEN $3 AND $4 ORDER BY time LIMIT $5",
-		req.GetLocation().GetLat()-0.05, req.GetLocation().GetLat()+0.05, req.GetLocation().GetLng()-0.05, req.GetLocation().GetLng()+0.05, req.GetMaxUsers(),
+		"SELECT user_id, latitude, longitude FROM user_locations WHERE latitude BETWEEN $1 AND $2 AND longitude BETWEEN $3 AND $4 ORDER BY time DESC LIMIT $5",
+		req.GetLocation().GetLat()-0.05,
+		req.GetLocation().GetLat()+0.05,
+		req.GetLocation().GetLng()-0.05,
+		req.GetLocation().GetLng()+0.05,
+		req.GetMaxUsers(),
 	)
 	if err != nil {
 		log.Printf("Failed to get users in your location: %v", err)
-		return nil, err
+		return nil, status.Errorf(codes.Internal, "failed to query database: %v", err)
 	}
 	defer rows.Close()
 
-	var userids []int64
+	var users []*pb.UserResponse
 	for rows.Next() {
-		var user int64
+		var (
+			userID int64
+			lat    float64
+			lng    float64
+		)
 
-		if err := rows.Scan(&user); err != nil {
+		if err := rows.Scan(&userID, &lat, &lng); err != nil {
 			log.Printf("Failed to scan row: %v", err)
 			continue
 		}
-		userids = append(userids, user)
+
+		users = append(users, &pb.UserResponse{
+			UserId: userID,
+			Location: &pb.GeoPair{
+				Lat: lat,
+				Lng: lng,
+			},
+		})
 	}
 
-	return &pb.GetUsersBetweenLongAndLatResponse{Userid: userids}, nil
+	if err := rows.Err(); err != nil {
+		log.Printf("Error after scanning rows: %v", err)
+		return nil, status.Errorf(codes.Internal, "row scanning error: %v", err)
+	}
+
+	return &pb.GetUsersBetweenLongAndLatResponse{
+		User: users,
+	}, nil
 }
 
 func (s *locationServer) GetLocationHistory(ctx context.Context, req *pb.GetLocationHistoryRequest) (*pb.GetLocationHistoryResponse, error) {
